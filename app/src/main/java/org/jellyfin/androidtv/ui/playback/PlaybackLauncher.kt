@@ -1,10 +1,34 @@
 package org.jellyfin.androidtv.ui.playback
 
+import android.content.ComponentName
 import android.content.Context
+import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import coil3.compose.rememberAsyncImagePainter
+import org.jellyfin.androidtv.R
+import org.jellyfin.androidtv.data.repository.ExternalAppRepository
 import org.jellyfin.androidtv.preference.UserPreferences
+import org.jellyfin.androidtv.ui.base.JellyfinTheme
+import org.jellyfin.androidtv.ui.base.LocalShapes
+import org.jellyfin.androidtv.ui.base.Text
+import org.jellyfin.androidtv.ui.base.list.ListButton
 import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
 import org.jellyfin.androidtv.ui.navigation.Destinations
 import org.jellyfin.androidtv.ui.navigation.NavigationRepository
+import org.jellyfin.androidtv.util.componentName
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaType
@@ -19,6 +43,7 @@ class PlaybackLauncher(
 	private val videoQueueManager: VideoQueueManager,
 	private val navigationRepository: NavigationRepository,
 	private val userPreferences: UserPreferences,
+	private val externalAppRepository: ExternalAppRepository,
 ) {
 	private val BaseItemDto.supportsExternalPlayer
 		get() = when (type) {
@@ -57,15 +82,92 @@ class PlaybackLauncher(
 
 			if (items.isEmpty()) return
 
-			if (userPreferences[UserPreferences.useExternalPlayer] && items.all { it.supportsExternalPlayer }) {
+			fun launchExternalPlayer(componentName: ComponentName?) {
+				ExternalPlayerActivity.specifyComponentName(componentName)
 				context.startActivity(ActivityDestinations.externalPlayer(context, position?.milliseconds ?: Duration.ZERO))
-			} else if (userPreferences[UserPreferences.playbackRewriteVideoEnabled]) {
-				val destination = Destinations.videoPlayerNew(position)
-				navigationRepository.navigate(destination, replace)
+			}
+
+			fun launchInternalPlayer() {
+				if (userPreferences[UserPreferences.playbackRewriteVideoEnabled]) {
+					val destination = Destinations.videoPlayerNew(position)
+					navigationRepository.navigate(destination, replace)
+				} else {
+					val destination = Destinations.videoPlayer(position)
+					navigationRepository.navigate(destination, replace)
+				}
+			}
+
+			if (userPreferences[UserPreferences.askPlayer]) {
+				// TODO: Currently doesn't check whether items support external players
+				val externalPlayerApps = externalAppRepository.getExternalPlayerApps(context);
+
+				var dialog: AlertDialog? = null;
+				val builder: AlertDialog.Builder = AlertDialog.Builder(context, R.style.Theme_Jellyfin_Dialog)
+				builder.setView(ComposeView(context).apply {
+					val packageManager = context.packageManager
+					setContent {
+						LazyColumn(
+							contentPadding = PaddingValues(8.dp, 8.dp),
+							modifier = Modifier
+								.clip(LocalShapes.current.large)
+								.background(JellyfinTheme.colorScheme.surface)
+						) {
+							item() {
+								PlayerSelectButton(
+									rememberAsyncImagePainter(R.mipmap.app_icon),
+									stringResource(R.string.video_player_internal),
+								) {
+									launchInternalPlayer()
+									dialog?.dismiss()
+								}
+							}
+							items(externalPlayerApps) { app ->
+								val icon = remember(app, packageManager) { app.loadIcon(packageManager) }
+								val displayName = remember(app, packageManager) { app.loadLabel(packageManager).toString() }
+
+								PlayerSelectButton(
+									rememberAsyncImagePainter(icon),
+									displayName,
+								) {
+									launchExternalPlayer(app.activityInfo.componentName)
+									dialog?.dismiss()
+								}
+							}
+						}
+					}
+				})
+
+				dialog = builder.create()
+				dialog.show()
+				return
+			}
+
+			if (userPreferences[UserPreferences.useExternalPlayer] && items.all { it.supportsExternalPlayer }) {
+				launchExternalPlayer(null)
 			} else {
-				val destination = Destinations.videoPlayer(position)
-				navigationRepository.navigate(destination, replace)
+				launchInternalPlayer()
 			}
 		}
 	}
+}
+
+@Composable
+fun PlayerSelectButton(
+	image: Painter,
+	content: String,
+	onClick: () -> Unit,
+) {
+	ListButton(
+		leadingContent = {
+			Image(
+				painter = image,
+				contentDescription = null,
+				modifier = Modifier
+					.size(32.dp)
+					.clip(LocalShapes.current.small)
+			)
+		},
+		headingContent = { Text(content) },
+		onClick = onClick,
+	)
 }

@@ -1,6 +1,7 @@
 package org.jellyfin.androidtv.ui.playback
 
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -77,6 +78,12 @@ class ExternalPlayerActivity : FragmentActivity() {
 
 		// The extra keys used by various video players to read the end position
 		private val resultPositionExtras = arrayOf(API_MX_RESULT_POSITION, API_VLC_RESULT_POSITION)
+
+		private var specifiedComponentName: ComponentName? = null;
+
+		fun specifyComponentName(componentName: ComponentName?) {
+			specifiedComponentName = componentName
+		}
 	}
 
 	private val videoQueueManager by inject<VideoQueueManager>()
@@ -165,10 +172,12 @@ class ExternalPlayerActivity : FragmentActivity() {
 				else -> null
 			}
 
+			(specifiedComponentName ?:
 			// Set configured app to launch
 			externalAppRepository
 				.getCurrentExternalPlayerApp(this@ExternalPlayerActivity)
 				?.componentName
+				)
 				?.let(::setComponent)
 
 			setDataAndTypeAndNormalize(url.toUri(), mediaType)

@@ -8,11 +8,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.data.repository.ExternalAppRepository
+import org.jellyfin.androidtv.ui.base.Icon
 import org.jellyfin.androidtv.ui.base.LocalShapes
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.base.form.RadioButton
@@ -33,12 +35,26 @@ fun SettingsPlaybackPlayerScreen() {
 
 	val externalPlayerApps = remember(context) { externalAppRepository.getExternalPlayerApps(context) }
 	val currentExternalPlayer = remember(context) { externalAppRepository.getCurrentExternalPlayerApp(context) }
+	val shouldAskPlayer = remember(context) { externalAppRepository.getShouldAskPlayer() }
 
 	SettingsColumn {
 		item {
 			ListSection(
 				overlineContent = { Text(stringResource(R.string.pref_playback).uppercase()) },
 				headingContent = { Text(stringResource(R.string.playback_video_player)) },
+			)
+		}
+
+		item {
+			ListButton(
+				enabled = externalPlayerApps.isNotEmpty(),
+				leadingContent = { Icon(painterResource(R.drawable.ic_info), contentDescription = null, Modifier.size(32.dp)) },
+				headingContent = { Text(stringResource(R.string.ask_player)) },
+				trailingContent = { RadioButton(checked = shouldAskPlayer) },
+				onClick = {
+					externalAppRepository.setShouldAskPlayer()
+					router.back()
+				}
 			)
 		}
 
@@ -54,7 +70,7 @@ fun SettingsPlaybackPlayerScreen() {
 					)
 				},
 				headingContent = { Text(stringResource(R.string.app_name)) },
-				trailingContent = { RadioButton(checked = currentExternalPlayer == null) },
+				trailingContent = { RadioButton(checked = !shouldAskPlayer && currentExternalPlayer == null) },
 				captionContent = { Text(stringResource(R.string.video_player_internal)) },
 				onClick = {
 					externalAppRepository.setExternalPlayerapp(null)

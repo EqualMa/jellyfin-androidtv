@@ -97,6 +97,12 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		var externalPlayerComponentName = stringPreference("external_player_component", "")
 
 		/**
+		 * Whether to ask the playback application every time.
+		 */
+		// TODO: make the options exclusive in one sum type
+		var askPlayer = booleanPreference("ask_player", false)
+
+		/**
 		 * Change refresh rate to match media when device supports it
 		 */
 		var refreshRateSwitchingBehavior = enumPreference("refresh_rate_switching_behavior", RefreshRateSwitchingBehavior.DISABLED)

@@ -48,6 +48,9 @@ fun SettingsPlaybackScreen() {
 				headingContent = { Text(stringResource(R.string.playback_video_player)) },
 				trailingContent = {
 					val iconDrawable = remember(context) {
+						if (externalAppRepository.getShouldAskPlayer()) {
+							return@remember R.drawable.ic_info
+						}
 						externalAppRepository.getCurrentExternalPlayerApp(context)?.loadIcon(context.packageManager)
 					}
 					Image(

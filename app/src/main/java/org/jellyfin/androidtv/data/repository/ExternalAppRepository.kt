@@ -51,6 +51,8 @@ class ExternalAppRepository(
 	}
 
 	fun setExternalPlayerapp(activityInfo: ActivityInfo?) {
+		userPreferences[UserPreferences.askPlayer] = false
+
 		if (activityInfo == null) {
 			userPreferences[UserPreferences.useExternalPlayer] = false
 			userPreferences[UserPreferences.externalPlayerComponentName] = ""
@@ -58,5 +60,12 @@ class ExternalAppRepository(
 			userPreferences[UserPreferences.useExternalPlayer] = true
 			userPreferences[UserPreferences.externalPlayerComponentName] = activityInfo.componentName.flattenToShortString()
 		}
+	}
+
+	fun getShouldAskPlayer(): Boolean = userPreferences[UserPreferences.askPlayer]
+
+	fun setShouldAskPlayer() {
+		setExternalPlayerapp(null)
+		userPreferences[UserPreferences.askPlayer] = true
 	}
 }
